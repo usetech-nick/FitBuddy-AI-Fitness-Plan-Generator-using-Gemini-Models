@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FitBuddy — AI Fitness Plan Generator</title>
+
+  <!-- Fonts: Syne (display) + DM Sans (body) — distinctive, not generic -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ══════════════════════════════════════════════
+       DESIGN TOKENS  —  Cyber-Zen Glassmorphism
+    ══════════════════════════════════════════════ */
+    :root {
+      --bg-dark:      #050818;
+      --bg-mid:       #0b1030;
+      --glass-bg:     rgba(255, 255, 255, 0.045);
+      --glass-border: rgba(255, 255, 255, 0.12);
+      --glass-hover:  rgba(255, 255, 255, 0.08);
+      --teal:         #00e5c8;
+      --teal-dim:     rgba(0, 229, 200, 0.15);
+      --neon-pink:    #e040fb;
+      --neon-pink-dim:rgba(224, 64, 251, 0.15);
+      --blue-glow:    #4a6cf7;
+      --text-primary: #eef0ff;
+      --text-secondary: #8b92c4;
+      --text-muted:   #4a5180;
+      --radius-card:  20px;
+      --radius-sm:    10px;
+      --shadow-card:  0 8px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08);
+      --glow-teal:    0 0 20px rgba(0, 229, 200, 0.4);
+      --glow-pink:    0 0 20px rgba(224, 64, 251, 0.4);
+      --transition:   0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* ══════════════════════════════════════════════
+       RESET & BASE
+    ══════════════════════════════════════════════ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ══════════════════════════════════════════════
+       ANIMATED GRADIENT BACKGROUND
+    ══════════════════════════════════════════════ */
+    .bg-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background: radial-gradient(ellipse 120% 80% at 20% 10%, #0d1f6e 0%, transparent 60%),
+                  radial-gradient(ellipse 90% 60% at 80% 80%, #2d0a4e 0%, transparent 60%),
+                  radial-gradient(ellipse 60% 40% at 50% 50%, #071445 0%, transparent 80%),
+                  var(--bg-dark);
+      animation: bgShift 18s ease-in-out infinite alternate;
+    }
+
+    @keyframes bgShift {
+      0%   { background-position: 0% 0%, 100% 100%, 50% 50%; }
+      100% { background-position: 10% 20%, 90% 80%, 55% 45%; }
+    }
+
+    /* Floating orbs for depth */
+    .orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.18;
+      pointer-events: none;
+      z-index: 0;
+      animation: orbFloat 20s ease-in-out infinite;
+    }
+    .orb-1 { width: 500px; height: 500px; background: var(--blue-glow); top: -150px; left: -100px; animation-delay: 0s; }
+    .orb-2 { width: 400px; height: 400px; background: var(--neon-pink); bottom: -100px; right: -80px; animation-delay: -8s; }
+    .orb-3 { width: 300px; height: 300px; background: var(--teal); top: 40%; left: 60%; animation-delay: -4s; }
+
+    @keyframes orbFloat {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33%       { transform: translate(40px, -30px) scale(1.08); }
+      66%       { transform: translate(-20px, 20px) scale(0.95); }
+    }
+
+    /* Grid noise overlay */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
+      background-size: 50px 50px;
+      pointer-events: none;
+    }
+
+    /* ══════════════════════════════════════════════
+       LAYOUT SHELL
+    ══════════════════════════════════════════════ */
+    .wrapper {
+      position: relative;
+      z-index: 2;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+
+    /* ══════════════════════════════════════════════
+       HERO HEADER
+    ══════════════════════════════════════════════ */
+    .hero {
+      text-align: center;
+      padding: 3.5rem 1rem 2.5rem;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: 100px;
+      padding: 0.35rem 1rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--teal);
+      margin-bottom: 1.25rem;
+      backdrop-filter: blur(10px);
+    }
+
+    .hero-badge .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--teal);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.5; transform: scale(0.7); }
+    }
+
+    .hero h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(2.8rem, 7vw, 5rem);
+      font-weight: 800;
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, #ffffff 30%, var(--teal) 70%, var(--neon-pink) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 0 30px rgba(0, 229, 200, 0.25));
+      margin-bottom: 1rem;
+    }
+
+    .hero p {
+      font-size: 1.1rem;
+      color: var(--text-secondary);
+      max-width: 520px;
+      margin: 0 auto;
+      line-height: 1.7;
+    }
+
+    /* ══════════════════════════════════════════════
+       GLASS CARD — reusable
+    ══════════════════════════════════════════════ */
+    .glass-card {
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-card);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: var(--shadow-card);
+      padding: 2rem;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+
+    .glass-card:hover {
+      border-color: rgba(255,255,255,0.2);
+    }
+
+    .card-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .card-title .icon {
+      font-size: 1.2rem;
+    }
+
+    .card-title.teal-accent  { color: var(--teal);      text-shadow: var(--glow-teal); }
+    .card-title.pink-accent  { color: var(--neon-pink); text-shadow: var(--glow-pink); }
+
+    /* ══════════════════════════════════════════════
+       FORM ELEMENTS
+    ══════════════════════════════════════════════ */
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .form-group { display: flex; flex-direction: column; gap: 0.45rem; }
+
+    .form-group label {
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.95rem;
+      padding: 0.75rem 1rem;
+      outline: none;
+      transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+    }
+
+    .form-group input::placeholder,
+    .form-group textarea::placeholder { color: var(--text-muted); }
+
+    .form-group select option { background: #1a1f4a; }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px rgba(0, 229, 200, 0.12);
+      background: rgba(0, 229, 200, 0.04);
+    }
+
+    /* Span full row */
+    .span-full { grid-column: 1 / -1; }
+
+    /* ══════════════════════════════════════════════
+       BUTTONS
+    ══════════════════════════════════════════════ */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      padding: 0.8rem 1.8rem;
+      border-radius: 100px;
+      border: none;
+      cursor: pointer;
+      transition: all var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(255,255,255,0.08);
+      opacity: 0;
+      transition: opacity var(--transition);
+    }
+
+    .btn:hover::before { opacity: 1; }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--teal), #00b8a0);
+      color: #050818;
+      font-weight: 600;
+      box-shadow: 0 4px 20px rgba(0, 229, 200, 0.35);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(0, 229, 200, 0.5);
+    }
+
+    .btn-secondary {
+      background: linear-gradient(135deg, var(--neon-pink), #b030d0);
+      color: #fff;
+      font-weight: 600;
+      box-shadow: 0 4px 20px rgba(224, 64, 251, 0.35);
+    }
+
+    .btn-secondary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(224, 64, 251, 0.5);
+    }
+
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    .btn-full { width: 100%; margin-top: 1.5rem; }
+
+    /* Spinner for loading state */
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: currentColor;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ══════════════════════════════════════════════
+       PLAN OUTPUT AREA
+    ══════════════════════════════════════════════ */
+    #plan-section { display: none; margin-top: 2rem; }
+
+    /* Plan header */
+    .plan-header {
+      text-align: center;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .plan-title {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(1.4rem, 4vw, 2rem);
+      font-weight: 800;
+      background: linear-gradient(90deg, var(--teal), var(--neon-pink));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.5rem;
+    }
+
+    .plan-summary {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      max-width: 600px;
+      margin: 0 auto;
+      line-height: 1.7;
+    }
+
+    /* Version badge */
+    .version-badge {
+      display: inline-block;
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: 100px;
+      padding: 0.25rem 0.75rem;
+      font-size: 0.7rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--teal);
+      margin-bottom: 0.8rem;
+    }
+
+    /* Days scroll strip */
+    .days-nav {
+      display: flex;
+      gap: 0.5rem;
+      overflow-x: auto;
+      padding-bottom: 0.5rem;
+      margin-bottom: 1.5rem;
+      scrollbar-width: thin;
+      scrollbar-color: var(--teal) transparent;
+    }
+
+    .day-tab {
+      flex-shrink: 0;
+      padding: 0.4rem 1rem;
+      border-radius: 100px;
+      border: 1px solid var(--glass-border);
+      background: var(--glass-bg);
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all var(--transition);
+      white-space: nowrap;
+      backdrop-filter: blur(10px);
+    }
+
+    .day-tab:hover,
+    .day-tab.active {
+      background: var(--teal-dim);
+      border-color: var(--teal);
+      color: var(--teal);
+    }
+
+    /* Day content card */
+    .day-card { display: none; animation: fadeInUp 0.4s ease; }
+    .day-card.visible { display: block; }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .day-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .day-focus {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .day-duration {
+      font-size: 0.8rem;
+      color: var(--teal);
+      background: var(--teal-dim);
+      border: 1px solid rgba(0, 229, 200, 0.3);
+      border-radius: 100px;
+      padding: 0.25rem 0.75rem;
+    }
+
+    /* Warm-up / cool-down pills */
+    .phase-pill {
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-sm);
+      padding: 0.75rem 1rem;
+      font-size: 0.88rem;
+      color: var(--text-secondary);
+      margin-bottom: 1rem;
+      line-height: 1.6;
+    }
+
+    .phase-label {
+      font-size: 0.68rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--neon-pink);
+      font-weight: 600;
+      display: block;
+      margin-bottom: 0.3rem;
+    }
+
+    /* Exercise table */
+    .exercise-list { display: flex; flex-direction: column; gap: 0.75rem; }
+
+    .exercise-row {
+      display: grid;
+      grid-template-columns: 1fr auto auto auto;
+      align-items: center;
+      gap: 1rem;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: var(--radius-sm);
+      padding: 0.85rem 1rem;
+      transition: background var(--transition), border-color var(--transition);
+    }
+
+    .exercise-row:hover {
+      background: rgba(0, 229, 200, 0.04);
+      border-color: rgba(0, 229, 200, 0.2);
+    }
+
+    .exercise-name {
+      font-weight: 500;
+      font-size: 0.95rem;
+      color: var(--text-primary);
+    }
+
+    .exercise-tip {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+      font-style: italic;
+    }
+
+    .ex-stat {
+      font-size: 0.8rem;
+      font-weight: 500;
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: 6px;
+      padding: 0.3rem 0.6rem;
+      color: var(--teal);
+      white-space: nowrap;
+      text-align: center;
+    }
+
+    .ex-rest { color: var(--neon-pink); }
+
+    @media (max-width: 600px) {
+      .exercise-row {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+      }
+      .ex-stat-row {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+    }
+
+    /* Weekly note */
+    .weekly-note {
+      margin-top: 1.5rem;
+      padding: 1rem 1.25rem;
+      background: linear-gradient(135deg, rgba(74, 108, 247, 0.12), rgba(0, 229, 200, 0.08));
+      border: 1px solid rgba(74, 108, 247, 0.3);
+      border-radius: var(--radius-sm);
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      line-height: 1.7;
+    }
+
+    .weekly-note strong { color: var(--text-primary); font-family: 'Syne', sans-serif; }
+
+    /* ══════════════════════════════════════════════
+       NUTRITION / RECOVERY TIP CARD
+    ══════════════════════════════════════════════ */
+    .nutrition-card {
+      background: linear-gradient(135deg, rgba(224, 64, 251, 0.06), rgba(0, 229, 200, 0.04));
+      border: 1px solid rgba(224, 64, 251, 0.2);
+      border-radius: var(--radius-card);
+      padding: 1.75rem;
+      backdrop-filter: blur(20px);
+    }
+
+    .nutrition-type {
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--neon-pink);
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+    }
+
+    .nutrition-headline {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 0.75rem;
+      line-height: 1.3;
+    }
+
+    .nutrition-advice {
+      font-size: 0.92rem;
+      color: var(--text-secondary);
+      line-height: 1.75;
+      margin-bottom: 1.25rem;
+    }
+
+    .macro-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .macro-tile {
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-sm);
+      padding: 0.75rem;
+      text-align: center;
+    }
+
+    .macro-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      margin-bottom: 0.35rem;
+      display: block;
+    }
+
+    .macro-value {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--teal);
+    }
+
+    .bonus-tip {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      font-style: italic;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--glass-border);
+    }
+
+    /* ══════════════════════════════════════════════
+       FEEDBACK SECTION
+    ══════════════════════════════════════════════ */
+    .feedback-applied {
+      display: none;
+      background: var(--teal-dim);
+      border: 1px solid rgba(0, 229, 200, 0.3);
+      border-radius: var(--radius-sm);
+      padding: 0.75rem 1rem;
+      font-size: 0.85rem;
+      color: var(--teal);
+      margin-bottom: 1.25rem;
+    }
+
+    /* ══════════════════════════════════════════════
+       ERROR / STATUS MESSAGES
+    ══════════════════════════════════════════════ */
+    .status-msg {
+      display: none;
+      border-radius: var(--radius-sm);
+      padding: 0.85rem 1rem;
+      font-size: 0.88rem;
+      margin-top: 1rem;
+    }
+
+    .status-error {
+      background: rgba(255, 75, 75, 0.12);
+      border: 1px solid rgba(255, 75, 75, 0.3);
+      color: #ff9a9a;
+    }
+
+    /* ══════════════════════════════════════════════
+       SECTION SPACING
+    ══════════════════════════════════════════════ */
+    .section { margin-bottom: 1.5rem; }
+
+    /* ══════════════════════════════════════════════
+       SCROLLBAR STYLING
+    ══════════════════════════════════════════════ */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--teal); }
+
+    /* ══════════════════════════════════════════════
+       RESPONSIVE TWEAKS
+    ══════════════════════════════════════════════ */
+    @media (max-width: 768px) {
+      .wrapper { padding: 1rem 1rem 3rem; }
+      .hero { padding: 2rem 0.5rem 1.5rem; }
+      .glass-card { padding: 1.5rem 1.25rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Ambient background layers -->
+  <div class="bg-canvas"></div>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+
+  <!-- ══════════════════════════════════════════
+       MAIN CONTENT
+  ══════════════════════════════════════════ -->
+  <div class="wrapper">
+
+    <!-- HERO -->
+    <header class="hero">
+      <div class="hero-badge">
+        <span class="dot"></span>
+        Powered by Gemini AI
+      </div>
+      <h1>FitBuddy</h1>
+      <p>Your hyper-personalised AI fitness coach. Enter your profile and get a science-backed 7-day plan in seconds.</p>
+    </header>
+
+    <!-- ── SECTION 1: Generation Form ───────── -->
+    <section class="section glass-card">
+      <div class="card-title teal-accent">
+        <span class="icon">✦</span> Your Profile
+      </div>
+
+      <form id="generate-form">
+        <div class="form-grid">
+
+          <div class="form-group">
+            <label for="name">Name</label>
+            <input type="text" id="name" name="name" placeholder="e.g. Alex Rivera" required />
+          </div>
+
+          <div class="form-group">
+            <label for="age">Age</label>
+            <input type="number" id="age" name="age" placeholder="e.g. 28" min="15" max="99" required />
+          </div>
+
+          <div class="form-group">
+            <label for="weight">Weight</label>
+            <input type="text" id="weight" name="weight" placeholder="e.g. 75 kg" required />
+          </div>
+
+          <div class="form-group">
+            <label for="goal">Fitness Goal</label>
+            <select id="goal" name="goal" required>
+              <option value="" disabled selected>Select goal…</option>
+              <option value="Weight Loss">⚡ Weight Loss</option>
+              <option value="Muscle Gain">💪 Muscle Gain</option>
+              <option value="General Wellness">🌿 General Wellness</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="intensity">Intensity Level</label>
+            <select id="intensity" name="intensity" required>
+              <option value="" disabled selected>Select intensity…</option>
+              <option value="Low">🌱 Low — Beginner-friendly</option>
+              <option value="Medium">🔥 Medium — Moderate effort</option>
+              <option value="High">⚡ High — Push your limits</option>
+            </select>
+          </div>
+
+        </div><!-- .form-grid -->
+
+        <button type="submit" class="btn btn-primary btn-full" id="generate-btn">
+          <span class="spinner" id="gen-spinner"></span>
+          <span id="gen-btn-text">Generate My Plan ✦</span>
+        </button>
+
+        <div class="status-msg status-error" id="gen-error"></div>
+      </form>
+    </section>
+
+    <!-- ── PLAN OUTPUT ──────────────────────── -->
+    <div id="plan-section">
+
+      <!-- Plan header + tabs -->
+      <div class="glass-card section">
+        <div class="plan-header">
+          <div class="version-badge" id="version-badge">Version 1</div>
+          <div class="plan-title" id="plan-title">Your Plan</div>
+          <div class="plan-summary" id="plan-summary"></div>
+        </div>
+
+        <!-- Day navigation tabs -->
+        <div class="days-nav" id="days-nav"></div>
+
+        <!-- Feedback applied notice -->
+        <div class="feedback-applied" id="feedback-applied"></div>
+
+        <!-- Day cards injected here -->
+        <div id="days-container"></div>
+
+        <!-- Weekly note -->
+        <div class="weekly-note" id="weekly-note"></div>
+      </div>
+
+      <!-- Nutrition / Recovery Tip -->
+      <div class="section" id="nutrition-section">
+        <div class="card-title pink-accent" style="margin-bottom:1rem;">
+          <span class="icon">◈</span> Daily Tip
+        </div>
+        <div class="nutrition-card" id="nutrition-card"></div>
+      </div>
+
+      <!-- ── SECTION 2: Feedback Form ────────── -->
+      <section class="section glass-card">
+        <div class="card-title pink-accent">
+          <span class="icon">◉</span> Refine Your Plan
+        </div>
+        <p style="font-size:0.88rem; color:var(--text-secondary); margin-bottom:1.25rem; line-height:1.6;">
+          Not happy with something? Tell FitBuddy — e.g. <em>"Add more cardio"</em>, <em>"I hurt my knee, swap leg exercises"</em>, or <em>"I only have 30 minutes a day"</em>.
+        </p>
+
+        <form id="feedback-form">
+          <div class="form-group">
+            <label for="feedback-text">Your Feedback</label>
+            <textarea id="feedback-text" name="feedback" rows="3"
+                      placeholder="Describe what you'd like changed…"></textarea>
+          </div>
+
+          <button type="submit" class="btn btn-secondary btn-full" id="feedback-btn" style="margin-top:1rem;">
+            <span class="spinner" id="fb-spinner"></span>
+            <span id="fb-btn-text">Update Plan ◈</span>
+          </button>
+
+          <div class="status-msg status-error" id="feedback-error"></div>
+        </form>
+      </section>
+
+    </div><!-- #plan-section -->
+
+  </div><!-- .wrapper -->
+
+
+  <!-- ══════════════════════════════════════════
+       JAVASCRIPT
+  ══════════════════════════════════════════ -->
+  <script>
+    // ─────────────────────────────────────────
+    // STATE
+    // ─────────────────────────────────────────
+    let currentPlanId   = null;   // DB row id of active plan
+    let currentDayIndex = 0;      // which tab is visible
+
+    // ─────────────────────────────────────────
+    // UTILITY: toggle loading state on a button
+    // ─────────────────────────────────────────
+    function setLoading(btnId, spinnerId, textId, label, isLoading) {
+      const btn     = document.getElementById(btnId);
+      const spinner = document.getElementById(spinnerId);
+      const text    = document.getElementById(textId);
+      btn.disabled        = isLoading;
+      spinner.style.display = isLoading ? 'block' : 'none';
+      text.textContent    = isLoading ? 'Thinking…' : label;
+    }
+
+    // ─────────────────────────────────────────
+    // UTILITY: show / hide status message
+    // ─────────────────────────────────────────
+    function showError(elId, msg) {
+      const el = document.getElementById(elId);
+      el.textContent    = '⚠ ' + msg;
+      el.style.display  = 'block';
+    }
+
+    function clearError(elId) {
+      const el = document.getElementById(elId);
+      el.textContent   = '';
+      el.style.display = 'none';
+    }
+
+    // ─────────────────────────────────────────
+    // RENDER: build and display the 7-day plan
+    // ─────────────────────────────────────────
+    function renderPlan(plan, version) {
+      // Update header
+      document.getElementById('version-badge').textContent = `Version ${version}`;
+      document.getElementById('plan-title').textContent    = plan.plan_title || 'Your Plan';
+      document.getElementById('plan-summary').textContent  = plan.summary    || '';
+
+      // Feedback applied notice
+      const fbApplied = document.getElementById('feedback-applied');
+      if (plan.feedback_applied) {
+        fbApplied.textContent  = '✓ ' + plan.feedback_applied;
+        fbApplied.style.display = 'block';
+      } else {
+        fbApplied.style.display = 'none';
+      }
+
+      // Build day tabs + cards
+      const nav       = document.getElementById('days-nav');
+      const container = document.getElementById('days-container');
+      nav.innerHTML       = '';
+      container.innerHTML = '';
+
+      (plan.days || []).forEach((dayObj, index) => {
+        // ── Tab ──
+        const tab = document.createElement('button');
+        tab.className   = `day-tab${index === 0 ? ' active' : ''}`;
+        tab.textContent = `Day ${index + 1}`;
+        tab.addEventListener('click', () => switchDay(index));
+        nav.appendChild(tab);
+
+        // ── Card ──
+        const card = document.createElement('div');
+        card.className = `day-card glass-card${index === 0 ? ' visible' : ''}`;
+        card.id        = `day-card-${index}`;
+
+        // Exercises HTML
+        const exHTML = (dayObj.exercises || []).map(ex => `
+          <div class="exercise-row">
+            <div>
+              <div class="exercise-name">${ex.name}</div>
+              <div class="exercise-tip">${ex.tip || ''}</div>
+            </div>
+            <div class="ex-stat-row" style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+              <span class="ex-stat">${ex.sets} sets</span>
+              <span class="ex-stat">${ex.reps_or_duration}</span>
+              <span class="ex-stat ex-rest">Rest ${ex.rest}</span>
+            </div>
+          </div>
+        `).join('');
+
+        card.innerHTML = `
+          <div class="day-meta">
+            <div class="day-focus">${dayObj.focus || ''}</div>
+            <span class="day-duration">⏱ ${dayObj.estimated_duration || ''}</span>
+          </div>
+          <div class="phase-pill">
+            <span class="phase-label">Warm-up</span>
+            ${dayObj.warm_up || ''}
+          </div>
+          <div class="exercise-list">${exHTML}</div>
+          <div class="phase-pill" style="margin-top:0.75rem;">
+            <span class="phase-label" style="color:var(--teal);">Cool-down</span>
+            ${dayObj.cool_down || ''}
+          </div>
+        `;
+
+        container.appendChild(card);
+      });
+
+      // Weekly note
+      const noteEl = document.getElementById('weekly-note');
+      if (plan.weekly_note) {
+        noteEl.innerHTML = `<strong>📝 Weekly Note</strong><br/>${plan.weekly_note}`;
+        noteEl.style.display = 'block';
+      }
+
+      currentDayIndex = 0;
+    }
+
+    // ─────────────────────────────────────────
+    // Switch visible day tab
+    // ─────────────────────────────────────────
+    function switchDay(index) {
+      // Deactivate old
+      document.querySelectorAll('.day-tab').forEach((t, i) => {
+        t.classList.toggle('active', i === index);
+      });
+      document.querySelectorAll('.day-card').forEach((c, i) => {
+        c.classList.toggle('visible', i === index);
+      });
+      currentDayIndex = index;
+    }
+
+    // ─────────────────────────────────────────
+    // RENDER: Nutrition / Recovery tip
+    // ─────────────────────────────────────────
+    function renderNutrition(tip) {
+      const card = document.getElementById('nutrition-card');
+      if (!tip) { card.innerHTML = '<p style="color:var(--text-muted)">No tip available.</p>'; return; }
+
+      const macros = tip.macro_snapshot || {};
+      card.innerHTML = `
+        <div class="nutrition-type">${tip.tip_type || 'Nutrition'}</div>
+        <div class="nutrition-headline">${tip.headline || ''}</div>
+        <div class="nutrition-advice">${tip.advice || ''}</div>
+        <div class="macro-grid">
+          <div class="macro-tile">
+            <span class="macro-label">Protein</span>
+            <span class="macro-value">${macros.protein || '—'}</span>
+          </div>
+          <div class="macro-tile">
+            <span class="macro-label">Carbs</span>
+            <span class="macro-value">${macros.carbs || '—'}</span>
+          </div>
+          <div class="macro-tile">
+            <span class="macro-label">Fats</span>
+            <span class="macro-value">${macros.fats || '—'}</span>
+          </div>
+        </div>
+        <div class="bonus-tip">💤 ${tip.bonus_tip || ''}</div>
+      `;
+    }
+
+    // ─────────────────────────────────────────
+    // EVENT: Generate Plan form submit
+    // ─────────────────────────────────────────
+    document.getElementById('generate-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearError('gen-error');
+      setLoading('generate-btn', 'gen-spinner', 'gen-btn-text', 'Generate My Plan ✦', true);
+
+      const formData = new FormData(e.target);
+
+      try {
+        const res  = await fetch('/generate-plan', { method: 'POST', body: formData });
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.detail || 'Something went wrong');
+
+        currentPlanId = data.plan_id;
+
+        // Render plan + nutrition
+        renderPlan(data.plan, 1);
+        renderNutrition(data.nutrition_tip);
+
+        // Show plan section with smooth scroll
+        const planSection = document.getElementById('plan-section');
+        planSection.style.display = 'block';
+        setTimeout(() => planSection.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+
+      } catch (err) {
+        showError('gen-error', err.message);
+      } finally {
+        setLoading('generate-btn', 'gen-spinner', 'gen-btn-text', 'Generate My Plan ✦', false);
+      }
+    });
+
+    // ─────────────────────────────────────────
+    // EVENT: Feedback form submit
+    // ─────────────────────────────────────────
+    document.getElementById('feedback-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!currentPlanId) return;
+
+      clearError('feedback-error');
+      setLoading('feedback-btn', 'fb-spinner', 'fb-btn-text', 'Update Plan ◈', true);
+
+      const formData = new FormData(e.target);
+
+      try {
+        const res  = await fetch(`/update-plan/${currentPlanId}`, { method: 'POST', body: formData });
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.detail || 'Update failed');
+
+        renderPlan(data.plan, data.version);
+
+        // Clear textarea
+        document.getElementById('feedback-text').value = '';
+
+        // Scroll back to plan
+        document.getElementById('plan-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      } catch (err) {
+        showError('feedback-error', err.message);
+      } finally {
+        setLoading('feedback-btn', 'fb-spinner', 'fb-btn-text', 'Update Plan ◈', false);
+      }
+    });
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,15 @@
+# Created by venv; see https://docs.python.org/3/library/venv.html
+
+# The secret file (Most Important!)
+.env
+
+# Python folders you don't need on GitHub
+__pycache__/
+.py[cod]
+venv/
+.venv/
+
+# Database files
+.sqlite3
+.env
+.env
